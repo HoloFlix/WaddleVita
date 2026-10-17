@@ -71,10 +71,36 @@ The first start downloads the game from your PC, so it takes a little while. Lat
 
 ## Offline play (no PC)
 
-WaddleVita can also run the server **on the Vita itself**: no PC, no Wi-Fi. You make a 1.3 GB file once from your own Waddle Forever install, copy it to the Vita,
-and choose **offline** on the Server tab (press **Square** until the box says offline, then Play). Dates 2005-08-22 to 2011-06-26 work, your penguin is saved on the Vita,
-and the Waddle Forever page of the pause menu (timeline date, settings, mods) works. Admin page, NPCs and mascots need the PC server.
-The first start takes a minute or two (measured: server ready after 52 s, then about 50 s more for two generated files). Full steps: `OFFLINE.md`.
+WaddleVita can also run the server **on the Vita itself**: no PC, no Wi-Fi once it is set up. Dates 2005-08-22 to 2011-06-26 work, your penguin is saved on the Vita,
+and the Waddle Forever page of the pause menu (timeline date, settings, mods) works. The admin page, NPC penguins and mascots need the PC server.
+The first start takes a minute or two (measured: server ready after 52 s, then about 50 s more for two generated files). More detail: `OFFLINE.md`.
+
+### Setup guide
+
+You need a PC with **Waddle Forever installed and started once** (so it has downloaded its game files), the Vita with WaddleVita installed (see Install above),
+and **1.4 GB free** on the Vita's memory card.
+
+**1. Make the offline pack on the PC** (about 3 minutes)
+- **Windows:** unzip this release, open the `Offline` folder and double-click **`Build Offline Pack.bat`**. It finds Waddle Forever by itself and uses Node.js if you have it, otherwise Waddle Forever's own copy.
+- **macOS / Linux** (or Waddle Forever in an unusual place): install Node.js 18+ and run
+  `node Offline/build-pack.js --wf "<your Waddle Forever folder>" --out offline-pack`
+  (the folder that contains `media` and `resources`).
+- When it says **done** you have `offline-pack/offline.pack` (about 1.3 GB) and `offline.pack.sha256`.
+  The pack is made from your own install and is for your own use; do not share it, it contains the game's files.
+
+**2. Copy it to the Vita**
+- Connect the Vita to the PC with VitaShell's **USB** or **FTP** mode.
+- Make the folder **`ux0:data/WaddleVita/offline/`** if it is not there and copy **`offline.pack`** into it, so the full path is `ux0:data/WaddleVita/offline/offline.pack`.
+- Check the size on the Vita is exactly the same as on the PC. A short copy is the most common problem; copy again if it differs (`offline.pack.sha256` is the checksum if you want to verify it).
+
+**3. Play**
+- Open WaddleVita, go to the **Server** tab (**R** from the library) and press **Square** until the address box says **offline**. (Square goes through any servers found on your network first. It only offers "offline" when the pack is in place.)
+- Press **Cross** on **Play**. The loading screen shows the server's steps and a clock. WaddleVita remembers the choice and starts the server as soon as you open the app, so later it is already warming up while you are in the menus.
+- Pick another date any time in the pause menu (**Select**, **Waddle Forever**, **Timeline date**).
+
+Your penguin lives in `ux0:data/WaddleVita/offline/home/.waddleforever` on the Vita, separate from the PC's. Back that folder up if it matters to you.
+To go back to a PC server, press Square on the Server tab to pick it (or type its address with Triangle).
+If Waddle Forever updates, make the pack again and delete `ux0:data/WaddleVita/offline/home/cache`.
 
 ## Playing
 
