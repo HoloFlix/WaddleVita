@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waddle Forever admin</title>
+<style>
+  :root { --bg:#eef4fb; --card:#fff; --ink:#14233a; --muted:#5b6b82; --line:#d5dfec; --blue:#0a64b4; --blue2:#0b78d6; --sun:#ffc933; --red:#d6452f; --green:#1c9a63; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0e1726; --card:#16233a; --ink:#e6eefb; --muted:#93a5c2; --line:#26385a; --blue:#4aa3f0; --blue2:#6bb6f5; --sun:#ffc933; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 system-ui, "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:var(--blue); color:#fff; padding:14px 20px; display:flex; flex-wrap:wrap; gap:8px 24px; align-items:baseline; }
+  header h1 { font-size:20px; margin:0; }
+  header span { opacity:.9; font-size:14px; }
+  main { max-width:1000px; margin:0 auto; padding:16px; display:grid; gap:16px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  h2 { margin:0 0 10px; font-size:16px; }
+  button { font:inherit; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:8px; padding:6px 12px; cursor:pointer; }
+  button.primary { background:var(--sun); border-color:#d9a600; color:#241a00; font-weight:600; }
+  button.danger { background:var(--red); border-color:var(--red); color:#fff; }
+  input[type=text], input[type=password], select { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); }
+  table { border-collapse:collapse; width:100%; }
+  td, th { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .muted { color:var(--muted); font-size:13px; }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:6px 16px; }
+  .day { padding:6px 0; border-bottom:1px solid var(--line); }
+  .day b { display:inline-block; min-width:96px; }
+  .ev { margin-left:96px; color:var(--muted); font-size:13px; }
+  #status { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:8px 14px; border-radius:8px; display:none; max-width:90vw; }
+  #login { display:none; }
+  code { background:var(--bg); padding:1px 5px; border-radius:5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Waddle Forever admin</h1>
+  <span id="hdr">connecting&hellip;</span>
+</header>
+<main>
+  <section id="login">
+    <h2>Access token</h2>
+    <p class="muted">This server asks for a token (the companion's <code>COMPANION_TOKEN</code>).</p>
+    <div class="row"><input type="password" id="token" placeholder="token"><button class="primary" id="tokbtn">Sign in</button></div>
+  </section>
+
+  <section>
+    <h2>Players online</h2>
+    <p class="muted">Commands run as that player; the result shows in their game. The list is Waddle Forever's own (the same as its Commands window).</p>
+    <table id="players"><thead><tr><th>Penguin</th><th>Id</th><th>Room</th><th>State</th><th></th></tr></thead><tbody></tbody></table>
+    <p class="muted" id="noplayers" style="display:none">Nobody is connected.</p>
+    <div id="tools" style="display:none; margin-top:12px; padding-top:10px; border-top:1px solid var(--line)">
+      <div class="row"><b id="who">nobody selected</b></div>
+      <div class="row" style="margin-top:8px">
+        <input type="text" id="itemq" placeholder="find an item (name or id)" size="22"><button id="itemfind">Find</button>
+        <select id="itemsel"></select><button id="itemgive" class="primary">Give item</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input type="text" id="coins" size="8" placeholder="coins"><button id="coinsgive" class="primary">Give coins</button>
+        <select id="roomsel"></select><button id="roomgo" class="primary">Send to room</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input type="text" id="newname" size="16" placeholder="new name"><button id="rename">Rename</button>
+        <button id="member">Toggle membership</button><button id="safechat">Toggle safe chat</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="kick">Kick</button><button id="mute">Mute / unmute</button><button id="ban" class="danger">Ban</button>
+      </div>
+    </div>
+    <details style="margin-top:10px"><summary>All commands</summary><table id="commands"><tbody></tbody></table></details>
+  </section>
+
+  <section id="msgsec">
+    <h2>Send a message to players</h2>
+    <p class="muted">The six notices the 2008&ndash;2011 game client already knows how to show. They need that client (they do nothing in the 2005&ndash;2007 clients or the 2011+ AS3 client).</p>
+    <div class="row">
+      <select id="mtype">
+        <option value="notice">Notice in the chat log (a &ldquo;blocked message&rdquo; line)</option>
+        <option value="mod">Moderator action line (&ldquo;X was kicked / muted / banned&rdquo;)</option>
+        <option value="mascot">Mascot message (a line from the mascot script)</option>
+        <option value="guide">Tour-guide bubble for a room</option>
+        <option value="error">Pop-up message (the game&rsquo;s own wording for a code)</option>
+        <option value="scavenger">Scavenger hunt: unlock day</option>
+      </select>
+      <select id="mtarget"></select>
+    </div>
+    <div class="row" id="mfields" style="margin-top:8px"></div>
+    <div class="row" style="margin-top:8px"><button class="primary" id="msend">Send</button><span class="muted" id="mhelp"></span></div>
+  </section>
+
+  <section id="npcsec">
+    <h2>NPC penguins</h2>
+    <p class="muted">Computer-played penguins that walk, talk, make friends and play with players. They are never saved, and players cannot tell them apart in the room list.</p>
+    <div class="row"><label><input type="checkbox" id="n_enabled"> <b>NPCs on</b></label><button id="n_clear">Remove all NPCs</button><span class="muted" id="n_count"></span></div>
+    <div class="grid2" style="margin-top:10px">
+      <label>How many NPCs <input type="text" id="n_total" size="4"></label>
+      <label>Most in one room <input type="text" id="n_max" size="4"></label>
+      <label>Follow players (% placed where players are) <input type="text" id="n_bias" size="4"></label>
+      <label>Stay in a room for <input type="text" id="n_smin" size="4">&ndash;<input type="text" id="n_smax" size="4"> s</label>
+      <label>Talking: lines per NPC per minute <input type="text" id="n_talk" size="4"></label>
+      <label>Silent NPCs (%) <input type="text" id="n_quiet" size="4"></label>
+      <label>Answer players (% chance) <input type="text" id="n_reply" size="4"></label>
+      <label><input type="checkbox" id="n_greet"> Greet people who arrive</label>
+      <label>Pairs: chance a lone NPC pairs up (%) <input type="text" id="n_pair" size="4"></label>
+      <label>Groups: chance it joins a group (%) <input type="text" id="n_group" size="4"></label>
+      <label>Largest group <input type="text" id="n_gmax" size="4"></label>
+    </div>
+    <h3 style="margin:14px 0 6px; font-size:14px">Playing with players</h3>
+    <div class="row">
+      <label><input type="checkbox" id="n_react"> React to players who wait for an opponent</label>
+      <label><input type="checkbox" id="n_card"> Card-Jitsu</label>
+      <label><input type="checkbox" id="n_sled"> Sled Racing (joins and finishes, no racing yet)</label>
+      <label><input type="checkbox" id="n_ff"> Find Four</label>
+      <label>after <input type="text" id="n_delay" size="3"> s</label>
+    </div>
+    <h3 style="margin:14px 0 6px; font-size:14px">Where they go</h3>
+    <p class="muted">Room weight: 0 = never, 1 = normal, 10 = very popular. Rooms that did not exist on the timeline date are marked.</p>
+    <div class="grid2" id="n_rooms"></div>
+    <div class="row" style="margin-top:10px"><button class="primary" id="n_apply">Apply</button></div>
+    <details style="margin-top:12px"><summary>Who is on the island now</summary><table id="n_bots"><tbody></tbody></table></details>
+  </section>
+
+  <section id="mascotsec">
+    <h2>Mascots</h2>
+    <p class="muted">A mascot appears as a penguin, says lines from the game&rsquo;s own mascot script, and sends every player who meets it a buddy request. When the player accepts, they get the mascot&rsquo;s background. The mascot accounts are Waddle Forever&rsquo;s own, so you can also log in as one by name to play it yourself (that removes the NPC).</p>
+    <table id="mascots"><thead><tr><th>Mascot</th><th>On the island</th><th>Behaviour</th><th>Background item</th><th></th></tr></thead><tbody></tbody></table>
+    <div class="row" style="margin-top:10px">
+      <label><input type="checkbox" id="m_req"> Send buddy requests</label>
+      <label><input type="checkbox" id="m_gift"> Give the background when accepted</label>
+      <button id="m_apply">Apply</button>
+    </div>
+    <h3 style="margin:14px 0 6px; font-size:14px">Scheduled appearances</h3>
+    <div id="events" class="muted">none</div>
+    <div class="row" style="margin-top:8px">
+      <input type="text" id="e_at" size="6" placeholder="HH:MM"><select id="e_mascot"></select><select id="e_room"></select>
+      <select id="e_mode"><option value="stay">stays in the room</option><option value="roam">roams the island</option></select>
+      <input type="text" id="e_min" size="4" placeholder="minutes"><input type="text" id="e_text" size="26" placeholder="what it says on arrival (optional)">
+      <button id="e_add" class="primary">Add</button>
+    </div>
+    <p class="muted">Time is this PC&rsquo;s clock, every day. Minutes = how long it stays (blank = until you send it away).</p>
+  </section>
+
+  <section id="toursec">
+    <h2>Tour guide</h2>
+    <p class="muted">A tour guide penguin announces a tour, then visits each stop in order, says the room&rsquo;s tour text and tells everyone where it goes next so they can use the map.</p>
+    <div class="row">
+      <label><input type="checkbox" id="t_enabled"> Tours on</label>
+      <label>Name <input type="text" id="t_name" size="14"></label>
+      <label>every <input type="text" id="t_every" size="4"> min</label>
+      <label>stay <input type="text" id="t_dwell" size="4"> s per stop</label>
+      <label>gathers in <select id="t_home"></select></label>
+    </div>
+    <div class="row" style="margin-top:8px"><label style="flex:1">Stops, in order (room keys, comma separated) <input type="text" id="t_stops" style="width:100%"></label></div>
+    <div class="row" style="margin-top:8px"><button class="primary" id="t_apply">Apply</button><button id="t_start">Start a tour now</button><button id="t_skip">Next stop</button><button id="t_stop">End tour</button><span class="muted" id="t_state"></span></div>
+  </section>
+
+  <section>
+    <h2>Chat</h2>
+    <p class="muted">The last 500 things said in rooms, newest at the bottom. Muted players' lines are struck through and nobody heard them.</p>
+    <div id="chat" style="max-height:260px; overflow:auto; font-size:13px; font-family:ui-monospace,Consolas,monospace"></div>
+  </section>
+
+  <section>
+    <h2>Bans and mutes</h2>
+    <p class="muted">By penguin name. A banned name is disconnected now and refused when it logs in. Waddle Forever has no reports or accounts, so there is nothing to review beyond the chat above.</p>
+    <div id="bans" class="muted">none</div>
+  </section>
+
+  <section>
+    <h2>Timeline</h2>
+    <p class="muted">The island as it was on a date. After a change the clients have to load the game again.</p>
+    <div class="row">
+      <span>Now: <b id="current">?</b></span>
+      <select id="year"></select>
+      <label><input type="checkbox" id="resetv" checked> reset the world when changing</label>
+    </div>
+    <div id="days" style="margin-top:8px"></div>
+  </section>
+
+  <section>
+    <h2>Settings</h2>
+    <div class="grid2" id="settings"></div>
+    <div class="row" style="margin-top:10px"><label><input type="checkbox" id="resets" checked> reset the world when applying</label><button class="primary" id="apply">Apply</button></div>
+  </section>
+
+  <section>
+    <h2>Mods</h2>
+    <div id="mods" class="muted">none found</div>
+  </section>
+
+  <section>
+    <h2>World</h2>
+    <button class="danger" id="reset">Reset the world (disconnects everybody)</button>
+  </section>
+</main>
+<div id="status"></div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  let token = sessionStorage.getItem('wf-token') || '';
+  let settings = {};
+  const say = (t) => { const s = $('status'); s.textContent = t; s.style.display = 'block'; clearTimeout(say.t); say.t = setTimeout(() => (s.style.display = 'none'), 3500); };
+
+  async function api(method, path, body) {
+    const r = await fetch('/vita/' + path, { method, headers: { 'Content-Type': 'application/json', 'X-Token': token }, body: body ? JSON.stringify(body) : undefined });
+    if (r.status === 401) { $('login').style.display = 'block'; throw new Error('token needed'); }
+    $('login').style.display = 'none';
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.statusText);
+    return j;
+  }
+  const el = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; };
+
+  async function loadInfo() {
+    const i = await api('GET', 'info');
+    settings = i.settings;
+    $('hdr').textContent = `Waddle Forever ${i.wfVersion} · timeline date ${i.version} · starts ${i.entry && i.entry.swf ? i.entry.swf : '?'}`;
+    $('current').textContent = i.version;
+    const box = $('settings'); box.textContent = '';
+    for (const [k, v] of Object.entries(i.settings)) {
+      if (typeof v === 'boolean') {
+        const l = el('label'); const c = el('input'); c.type = 'checkbox'; c.checked = v; c.dataset.key = k; l.append(c, ' ' + k.replace(/_/g, ' ')); box.append(l);
+      }
+    }
+  }
+
+  let selected = null, roomNames = {};
+  const run = async (command) => { if (!selected) return say('pick a player first'); try { await api('POST', 'command', { id: selected.id, command }); say(`"${command}" run as ${selected.name}`); } catch (e) { say(e.message); } };
+
+  async function loadRooms() {
+    const { rooms } = await api('GET', 'rooms'); const sel = $('roomsel'); sel.textContent = '';
+    for (const r of rooms) { roomNames[r.id] = r.name || r.key; const o = el('option', (r.name || r.key) + ' (' + r.id + ')'); o.value = r.id; sel.append(o); }
+  }
+
+  function pick(p) {
+    selected = p; $('tools').style.display = 'block';
+    $('who').textContent = p.name + ' (#' + p.id + ')' + (p.room != null ? ' in ' + (roomNames[p.room] || p.room) : '') + (p.muted ? ' · muted' : '') + (p.banned ? ' · banned' : '');
+  }
+
+  async function loadPlayers() {
+    const { players } = await api('GET', 'players');
+    const tb = $('players').tBodies[0]; tb.textContent = '';
+    $('noplayers').style.display = players.length ? 'none' : 'block';
+    if (selected) { const again = players.find((q) => q.id === selected.id); if (again) pick(again); else { selected = null; $('tools').style.display = 'none'; } }
+    for (const p of players) {
+      const row = el('tr'); const pickBtn = el('button', 'Select'); pickBtn.onclick = () => pick(p);
+      row.append(el('td', p.name), el('td', '#' + p.id, 'muted'), el('td', p.room != null ? (roomNames[p.room] || String(p.room)) : '', 'muted'), el('td', (p.muted ? 'muted ' : '') + (p.banned ? 'banned' : ''), 'muted')); const sel = el('td'); sel.append(pickBtn); row.append(sel); tb.append(row);
+    }
+    return;
+    for (const p of players) {
+      const tr = el('tr'); const cmd = el('input'); cmd.type = 'text'; cmd.placeholder = 'command, e.g. ai 413'; cmd.size = 24;
+      const go = el('button', 'Run'); go.onclick = async () => {
+        if (!cmd.value.trim()) return;
+        try { await api('POST', 'command', { id: p.id, command: cmd.value.trim() }); say(`ran "${cmd.value.trim()}" as ${p.name}`); } catch (e) { say(e.message); }
+      };
+      cmd.onkeydown = (e) => { if (e.key === 'Enter') go.click(); };
+      const td = el('td'); td.append(cmd, ' ', go);
+      tr.append(el('td', p.name), el('td', '#' + p.id, 'muted'), td); tb.append(tr);
+    }
+  }
+
+  async function loadCommands() {
+    const { commands } = await api('GET', 'commands');
+    const tb = $('commands').tBodies[0]; tb.textContent = '';
+    for (const c of commands) {
+      const tr = el('tr'); const name = (c.name || c.command || c.usage || JSON.stringify(c)) + (c.argNames && c.argNames.length ? ' ' + c.argNames.map((a) => '[' + a + ']').join(' ') : '');
+      const ex = c.examples && c.examples.length ? '  e.g. ' + c.examples.join(', ') : '';
+      tr.append(el('td', name), el('td', (c.description || c.desc || '') + ex, 'muted')); tb.append(tr);
+    }
+  }
+
+  async function loadYears() {
+    const t = await api('GET', 'timeline');
+    const sel = $('year'); sel.textContent = '';
+    for (const y of t.years) { const o = el('option', String(y)); o.value = y; sel.append(o); }
+    const cur = parseInt(t.current, 10); if (t.years.includes(cur)) sel.value = cur;
+    sel.onchange = () => loadDays(sel.value);
+    await loadDays(sel.value);
+  }
+
+  async function loadDays(year) {
+    const t = await api('GET', 'timeline?year=' + year);
+    const box = $('days'); box.textContent = '';
+    for (const d of t.days) {
+      const date = `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
+      const row = el('div', undefined, 'day'); const b = el('b', date); const go = el('button', 'Set date');
+      go.onclick = async () => { try { await api('POST', 'version', { version: date, reset: $('resetv').checked }); say('timeline set to ' + date); loadInfo(); } catch (e) { say(e.message); } };
+      row.append(b, go); box.append(row);
+      for (const e of d.events) box.append(el('div', '• ' + e.text, 'ev'));
+    }
+  }
+
+  async function loadMods() {
+    const { mods } = await api('GET', 'mods'); const box = $('mods'); box.textContent = '';
+    if (!mods.length) { box.textContent = 'none found (mods go in the Waddle Forever mods folder)'; return; }
+    for (const m of mods) {
+      const l = el('label'); const c = el('input'); c.type = 'checkbox'; c.checked = m.active;
+      c.onchange = async () => { const r = await api('POST', 'mods', { name: m.name, state: c.checked }); if (!r.ok) { c.checked = !c.checked; say(r.error); } else say(m.name + (c.checked ? ' on' : ' off')); };
+      l.append(c, ' ' + (m.title || m.name)); if (m.author) l.append(el('span', ' by ' + m.author, 'muted')); box.append(l, el('br'));
+      if (m.description) { const d = el('div', m.description, 'muted'); d.style.margin = '0 0 8px 24px'; box.append(d); }
+    }
+  }
+
+  $('itemfind').onclick = async () => {
+    try { const { items } = await api('GET', 'items?q=' + encodeURIComponent($('itemq').value.trim())); const sel = $('itemsel'); sel.textContent = ''; for (const i of items) { const o = el('option', i.name + ' (' + i.id + ')'); o.value = i.id; sel.append(o); } if (!items.length) say('no such item'); } catch (e) { say(e.message); }
+  };
+  $('itemgive').onclick = () => { const v = $('itemsel').value; if (v) run('ai ' + v); };
+  $('coinsgive').onclick = () => { const n = parseInt($('coins').value, 10); if (Number.isFinite(n)) run('ac ' + n); else say('enter a number'); };
+  $('roomgo').onclick = () => run('jr ' + $('roomsel').value);
+  $('rename').onclick = () => { const n = $('newname').value.trim(); if (n) run('rename ' + n); };
+  $('member').onclick = () => run('member');
+  $('safechat').onclick = () => run('safechat');
+  $('kick').onclick = async () => { if (!selected) return say('pick a player first'); try { await api('POST', 'kick', { id: selected.id }); say('kicked ' + selected.name); } catch (e) { say(e.message); } };
+  $('mute').onclick = async () => { if (!selected) return say('pick a player first'); try { await api('POST', 'mute', { name: selected.name, muted: !selected.muted }); say((selected.muted ? 'unmuted ' : 'muted ') + selected.name); loadPlayers(); loadBans(); } catch (e) { say(e.message); } };
+  $('ban').onclick = async () => { if (!selected) return say('pick a player first'); if (!confirm('Ban ' + selected.name + '?')) return; try { await api('POST', 'ban', { name: selected.name, banned: true }); say('banned ' + selected.name); loadPlayers(); loadBans(); } catch (e) { say(e.message); } };
+
+  async function loadBans() {
+    const { bans, mutes } = await api('GET', 'bans'); const box = $('bans'); box.textContent = '';
+    if (!bans.length && !mutes.length) { box.textContent = 'none'; return; }
+    const add = (kind, name, path, field) => { const row = el('div'); row.append(el('span', kind + ': ' + name + ' ')); const b = el('button', kind === 'banned' ? 'Unban' : 'Unmute'); b.onclick = async () => { await api('POST', path, { name, [field]: false }); loadBans(); loadPlayers(); }; row.append(b); box.append(row); };
+    for (const n of bans) add('banned', n, 'ban', 'banned');
+    for (const n of mutes) add('muted', n, 'mute', 'muted');
+  }
+
+  let chatNext = 0;
+  async function loadChat() {
+    const j = await api('GET', 'chat?since=' + chatNext); chatNext = j.next; const box = $('chat'); const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 8;
+    for (const c of j.chat) { const row = el('div'); const t = new Date(c.t).toLocaleTimeString(); row.textContent = `${t}  ${c.name}${c.room != null ? ' [' + (roomNames[c.room] || c.room) + ']' : ''}: ${c.text}`; if (c.muted) row.style.textDecoration = 'line-through'; box.append(row); }
+    if (atEnd) box.scrollTop = box.scrollHeight;
+  }
+
+  $('apply').onclick = async () => {
+    const s = {}; document.querySelectorAll('#settings input').forEach((c) => (s[c.dataset.key] = c.checked));
+    try { await api('POST', 'settings', { settings: s, reset: $('resets').checked }); say('settings applied'); } catch (e) { say(e.message); }
+  };
+  $('reset').onclick = async () => { if (confirm('Disconnect everybody and reset the world?')) { try { await api('POST', 'reset', {}); say('world reset'); } catch (e) { say(e.message); } } };
+  $('tokbtn').onclick = () => { token = $('token').value; sessionStorage.setItem('wf-token', token); start(); };
+
+  async function start() {
+    try { await loadRooms(); await Promise.all([loadInfo(), loadPlayers(), loadCommands(), loadYears(), loadMods(), loadBans(), loadChat()]); } catch (e) { $('hdr').textContent = e.message; }
+  }
+  start();
+  setInterval(() => loadPlayers().catch(() => {}), 5000);
+  setInterval(() => loadChat().catch(() => {}), 3000);
+})();
+</script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const say = (t) => { const s = $('status'); s.textContent = t; s.style.display = 'block'; clearTimeout(say.t); say.t = setTimeout(() => (s.style.display = 'none'), 3500); };
+  const token = () => sessionStorage.getItem('wf-token') || '';
+  async function api(method, path, body) {
+    const r = await fetch('/vita/' + path, { method, headers: { 'Content-Type': 'application/json', 'X-Token': token() }, body: body ? JSON.stringify(body) : undefined });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.statusText);
+    return j;
+  }
+  const el = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; };
+  const opt = (v, t) => { const o = el('option', t); o.value = v; return o; };
+  const num = (id) => Number($(id).value);
+  let data = null, mascotLines = [], players = [];
+
+  // ---- messages ----
+  const FIELDS = {
+    notice: [['text', 'text', 'message shown in the chat log', 34]],
+    mod: [['action', 'select:kick,mute,ban'], ['about', 'player']],
+    mascot: [['speaker', 'mascotsel'], ['index', 'mascotline']],
+    guide: [['speaker', 'botsel'], ['room', 'roomsel']],
+    error: [['code', 'errorsel']],
+    scavenger: [['day', 'text', 'day number', 6]],
+  };
+  const ERRORS = [[990, 'System reboot / maintenance'], [5, 'You have been kicked'], [4, 'Disconnected'], [3, 'Another connection was opened'], [914, 'Play time ending'], [915, 'Play hours ending'], [210, 'Room is full'], [211, 'Game is full'], [1000, 'No database connection'], [999, 'Members only'], [901, 'Buddy list is full'], [800, 'Cheating detected'], [610, 'Auto ban']];
+  const HELP = {
+    notice: 'Shows as a line in the chat log for everyone chosen.',
+    mod: 'Shows e.g. "Tester was kicked" for everyone chosen; it does not kick anybody (use the player tools for that).',
+    mascot: 'The mascot must be on the island (turn it on below) for its name to show.',
+    guide: 'The guide must be on the island; players in the chosen room see the tour-guide bubble.',
+    error: 'The window uses the client’s own wording for the code.',
+    scavenger: '',
+  };
+  function buildFields() {
+    const type = $('mtype').value, box = $('mfields'); box.textContent = '';
+    for (const [name, kind, hint, size] of FIELDS[type]) {
+      let input;
+      if (kind === 'text') { input = el('input'); input.type = 'text'; input.placeholder = hint || ''; input.size = size || 20; }
+      else if (kind.startsWith('select:')) { input = el('select'); for (const o of kind.slice(7).split(',')) input.append(opt(o, o)); }
+      else if (kind === 'roomsel') { input = el('select'); for (const r of data ? data.allRooms : []) input.append(opt(r.id, r.name)); }
+      else if (kind === 'player') { input = el('select'); for (const p of players) input.append(opt(p.id, p.name)); }
+      else if (kind === 'mascotsel') {
+        input = el('select'); for (const m of data ? data.mascots : []) input.append(opt(m.id, m.display + (m.on ? ' (on island)' : '')));
+        input.onchange = buildLines;
+      } else if (kind === 'botsel') { input = el('select'); for (const b of data ? data.status.bots : []) input.append(opt(b.id, b.name + ' (' + b.kind + ')')); }
+      else if (kind === 'errorsel') { input = el('select'); for (const [c, t] of ERRORS) input.append(opt(c, c + ' - ' + t)); }
+      else if (kind === 'mascotline') { input = el('select'); input.style.maxWidth = '420px'; }
+      input.dataset.name = name; box.append(input);
+    }
+    if (type === 'mascot') buildLines();
+    $('mhelp').textContent = HELP[type];
+  }
+  function buildLines() {
+    const sel = document.querySelector('#mfields select[data-name=index]'); if (!sel) return;
+    const speaker = document.querySelector('#mfields select[data-name=speaker]');
+    const m = data.mascots.find((x) => String(x.id) === speaker.value);
+    sel.textContent = '';
+    for (const l of mascotLines) if (m && l.mascot === m.name) sel.append(opt(l.index, l.category + ': ' + l.text));
+  }
+  async function loadTargets() {
+    try { players = (await api('GET', 'players')).players.filter((p) => !p.npc); } catch { return; }
+    const t = $('mtarget'), keep = t.value; t.textContent = '';
+    t.append(opt('all', 'everyone online'));
+    for (const r of (data ? data.allRooms : [])) t.append(opt('room:' + r.id, 'everyone in the ' + r.name));
+    for (const p of players) t.append(opt('player:' + p.id, 'only ' + p.name));
+    if ([...t.options].some((o) => o.value === keep)) t.value = keep;
+  }
+  $('mtype').onchange = buildFields;
+  $('msend').onclick = async () => {
+    const body = { type: $('mtype').value, target: $('mtarget').value };
+    document.querySelectorAll('#mfields [data-name]').forEach((i) => (body[i.dataset.name] = i.value));
+    try { const r = await api('POST', 'message', body); say(r.ok ? 'sent to ' + r.sent + (r.text ? ': ' + r.text : '') : r.error); } catch (e) { say(e.message); }
+  };
+
+  // ---- NPCs ----
+  function fillConfig() {
+    const c = data.config;
+    $('n_enabled').checked = c.enabled; $('n_total').value = c.population.total; $('n_max').value = c.population.maxPerRoom; $('n_bias').value = c.population.humanBias;
+    $('n_smin').value = c.population.stayMin; $('n_smax').value = c.population.stayMax; $('n_talk').value = c.chat.perMinute; $('n_quiet').value = c.chat.quiet;
+    $('n_reply').value = c.chat.reply; $('n_greet').checked = c.chat.greetArrivals; $('n_pair').value = c.groups.pair; $('n_group').value = c.groups.group; $('n_gmax').value = c.groups.groupMax;
+    $('n_react').checked = c.games.react; $('n_card').checked = c.games.card; $('n_sled').checked = c.games.sled; $('n_ff').checked = c.games.findFour; $('n_delay').value = c.games.delaySec;
+    const box = $('n_rooms'); box.textContent = '';
+    for (const r of data.allRooms) {
+      const label = el('label'); const i = el('input'); i.type = 'text'; i.size = 3; i.dataset.room = r.key; i.value = c.population.rooms[r.key] ?? 1;
+      label.append(i, ' ' + r.name + (r.since > data.status.date ? ' (not yet in ' + data.status.date.slice(0, 4) + ')' : '')); box.append(label);
+    }
+    $('m_req').checked = c.mascots.buddyRequests; $('m_gift').checked = c.mascots.giveBackground;
+    $('t_enabled').checked = c.tour.enabled; $('t_name').value = c.tour.guide; $('t_every').value = c.tour.everyMinutes; $('t_dwell').value = c.tour.dwellSec; $('t_stops').value = c.tour.stops.join(', ');
+  }
+  function fillStatus() {
+    const s = data.status;
+    $('n_count').textContent = s.count + ' NPC penguins now · timeline date ' + s.date;
+    const tb = $('n_bots').querySelector('tbody'); tb.textContent = '';
+    for (const b of s.bots) {
+      const tr = el('tr'); tr.append(el('td', b.name), el('td', b.kind), el('td', b.roomName), el('td', b.game || ''));
+      const td = el('td'); const sayBox = el('input'); sayBox.type = 'text'; sayBox.size = 18; sayBox.placeholder = 'say...'; const go = el('button', 'Say');
+      go.onclick = async () => { try { await api('POST', 'npc/say', { id: b.id, text: sayBox.value }); sayBox.value = ''; } catch (e) { say(e.message); } };
+      td.append(sayBox, go); tr.append(td); tb.append(tr);
+    }
+    $('t_state').textContent = 'tour: ' + s.tour.state + (s.tour.state === 'tour' ? ' (stop ' + (s.tour.stop + 1) + ')' : '');
+  }
+  $('n_apply').onclick = async () => {
+    const rooms = {}; document.querySelectorAll('#n_rooms input').forEach((i) => (rooms[i.dataset.room] = Number(i.value)));
+    const config = {
+      enabled: $('n_enabled').checked,
+      population: { total: num('n_total'), maxPerRoom: num('n_max'), humanBias: num('n_bias'), stayMin: num('n_smin'), stayMax: num('n_smax'), rooms },
+      chat: { perMinute: num('n_talk'), quiet: num('n_quiet'), reply: num('n_reply'), greetArrivals: $('n_greet').checked },
+      groups: { pair: num('n_pair'), group: num('n_group'), groupMax: num('n_gmax') },
+      games: { react: $('n_react').checked, card: $('n_card').checked, sled: $('n_sled').checked, findFour: $('n_ff').checked, delaySec: num('n_delay') },
+    };
+    try { await api('POST', 'npc/config', { config }); say('NPC settings applied'); await load(); } catch (e) { say(e.message); }
+  };
+  $('n_clear').onclick = async () => { try { await api('POST', 'npc/clear', {}); say('all NPCs removed'); await load(true); } catch (e) { say(e.message); } };
+
+  // ---- mascots ----
+  function fillMascots() {
+    const tb = $('mascots').querySelector('tbody'); tb.textContent = '';
+    const rooms = data.allRooms;
+    for (const m of data.mascots) {
+      const c = m.conf, tr = el('tr');
+      tr.append(el('td', m.display));
+      const mode = el('select'); mode.append(opt('stay', 'stays'), opt('roam', 'roams')); mode.value = c.mode;
+      const room = el('select'); for (const r of rooms) room.append(opt(r.key, r.name)); room.value = c.room;
+      const roam = el('input'); roam.type = 'text'; roam.size = 22; roam.value = (c.roam || []).join(','); roam.title = 'room keys it visits when roaming';
+      const dwell = el('input'); dwell.type = 'text'; dwell.size = 3; dwell.value = c.dwellSec; dwell.title = 'seconds per room';
+      const talk = el('input'); talk.type = 'text'; talk.size = 3; talk.value = c.talkEverySec; talk.title = 'seconds between lines';
+      const gift = el('input'); gift.type = 'text'; gift.size = 6; gift.value = m.gift || ''; gift.title = 'item id of the background';
+      const readConf = () => ({ mode: mode.value, room: room.value, roam: roam.value.split(',').map((x) => x.trim()).filter(Boolean), dwellSec: Number(dwell.value) || 60, talkEverySec: Number(talk.value) || 25, gift: Number(gift.value) || 0 });
+      const t2 = el('td'); const onBtn = el('button', m.on ? 'Send away' : 'Bring to island'); if (!m.on) onBtn.className = 'primary';
+      onBtn.onclick = async () => { try { const r = await api('POST', 'npc/mascot', { id: m.id, on: !m.on, conf: readConf() }); if (r.ok === false) say(r.error); await load(true); } catch (e) { say(e.message); } };
+      t2.append(onBtn); tr.append(t2);
+      const t3 = el('td'); t3.append(mode, ' in ', room, ' roam: ', roam, ' every ', dwell, ' s, talks every ', talk, ' s'); tr.append(t3);
+      const t4 = el('td'); t4.append(gift); tr.append(t4);
+      const t5 = el('td');
+      const save = el('button', 'Save');
+      save.onclick = async () => { try { await api('POST', 'npc/mascot', { id: m.id, conf: readConf() }); say(m.display + ' saved'); } catch (e) { say(e.message); } };
+      t5.append(save);
+      if (m.on) {
+        const to = el('select'); for (const r of rooms) to.append(opt(r.key, r.name));
+        const go = el('button', 'Go'); go.onclick = async () => { try { await api('POST', 'npc/mascot/send', { id: m.id, room: to.value }); say('sent'); } catch (e) { say(e.message); } };
+        const line = el('input'); line.type = 'text'; line.size = 16; line.placeholder = 'say...';
+        const sb = el('button', 'Say'); sb.onclick = async () => { try { await api('POST', 'npc/mascot/send', { id: m.id, say: line.value }); line.value = ''; } catch (e) { say(e.message); } };
+        t5.append(' ', to, go, ' ', line, sb);
+      }
+      tr.append(t5); tb.append(tr);
+    }
+    const ms = $('e_mascot'), keep = ms.value; ms.textContent = ''; for (const m of data.mascots) ms.append(opt(m.id, m.display)); if (keep) ms.value = keep;
+    const rs = $('e_room'), keep2 = rs.value; rs.textContent = ''; for (const r of rooms) rs.append(opt(r.key, r.name)); if (keep2) rs.value = keep2;
+    const th = $('t_home'), keep3 = th.value; th.textContent = ''; for (const r of rooms) th.append(opt(r.key, r.name)); th.value = keep3 || data.config.tour.announceRoom;
+    const ev = $('events'); ev.textContent = '';
+    if (!data.config.events.length) ev.textContent = 'none';
+    for (const e of data.config.events) {
+      const row = el('div', '', 'row'); const m = data.mascots.find((x) => x.id === e.mascot);
+      row.append(el('span', `${e.at} · ${m ? m.display : 'NPC'} · ${e.room || 'its room'} · ${e.mode || 'as set'}${e.minutes ? ' · ' + e.minutes + ' min' : ''}${e.text ? ' · "' + e.text + '"' : ''}`));
+      const rm = el('button', 'Remove'); rm.onclick = async () => { await api('POST', 'npc/event', { remove: e.id }); await load(true); }; row.append(rm); ev.append(row);
+    }
+  }
+  $('m_apply').onclick = async () => { try { await api('POST', 'npc/config', { config: { mascots: { buddyRequests: $('m_req').checked, giveBackground: $('m_gift').checked } } }); say('saved'); } catch (e) { say(e.message); } };
+  $('e_add').onclick = async () => {
+    try { await api('POST', 'npc/event', { at: $('e_at').value.trim(), mascot: Number($('e_mascot').value), room: $('e_room').value, mode: $('e_mode').value, minutes: Number($('e_min').value) || 0, text: $('e_text').value }); await load(true); } catch (e) { say(e.message); }
+  };
+
+  // ---- tour ----
+  $('t_apply').onclick = async () => {
+    const tour = { enabled: $('t_enabled').checked, guide: $('t_name').value, everyMinutes: num('t_every'), dwellSec: num('t_dwell'), announceRoom: $('t_home').value, stops: $('t_stops').value.split(',').map((x) => x.trim()).filter(Boolean) };
+    try { await api('POST', 'npc/config', { config: { tour } }); say('tour saved'); await load(true); } catch (e) { say(e.message); }
+  };
+  for (const [id, action] of [['t_start', 'start'], ['t_skip', 'skip'], ['t_stop', 'stop']]) $(id).onclick = async () => { try { await api('POST', 'npc/tour', { action }); await load(true); } catch (e) { say(e.message); } };
+
+  let first = true;
+  async function load(refillForms) {
+    data = await api('GET', 'npc');
+    if (first) { first = false; fillConfig(); try { mascotLines = (await api('GET', 'messages/mascot')).messages; } catch (e) { /* none */ } await loadTargets(); buildFields(); }
+    else if (refillForms) fillConfig();
+    fillStatus();
+    // do not rebuild the mascot rows while somebody is typing in them
+    if (!document.activeElement || !document.activeElement.closest || !document.activeElement.closest('#mascots, #events')) fillMascots();
+  }
+  const boot = () => load().catch(() => { first = true; setTimeout(boot, 2000); });
+  boot();
+  setInterval(() => { if (data) load().catch(() => {}); }, 6000);
+  setInterval(() => loadTargets().catch(() => {}), 10000);
+})();
+</script>
+</body>
+</html>
